@@ -1,5 +1,4 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useCallback } from 'react';
 import { animateScroll as scroll } from 'react-scroll';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,103 +8,74 @@ import ImageGallery from 'components/ImageGallery';
 import Button from 'components/Button/Button';
 import Modal from 'components/Modal';
 
-class App extends Component {
-  static defaultProps = {
-    initialShowModal: false,
-    initialPictureName: '',
-    initialLargeImageURL: '',
-    initialPage: 1,
-    initialStatus: 'idle',
-  };
+const App = () => {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [status, setStatus] = useState('idle');
 
-  static propTypes = {
-    initialShowModal: PropTypes.bool.isRequired,
-    initialPictureName: PropTypes.string.isRequired,
-    initialLargeImageURL: PropTypes.string.isRequired,
-    initialPage: PropTypes.number.isRequired,
-    initialStatus: PropTypes.oneOf([
-      'idle',
-      'pending',
-      'resolved',
-      'rejected',
-    ]),
-  };
-
-  state = {
-    showModal: this.props.initialShowModal,
-    pictureName: this.props.initialPictureName,
-    largeImageURL: this.props.initialLargeImageURL,
-    page: this.props.initialPage,
-    status: this.props.initialStatus,
-  };
-
-  onLoadMore = () => {
-    let { page } = this.state;
-    this.setState({ page: page + 1, status: 'pending' });
+  const onLoadMore = () => {
+    setPage(page => page + 1);
+    setStatus('pending');
     setTimeout(() => {
       scroll.scrollToBottom();
     }, 700);
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  const toggleModal = () => {
+    setShowModal(showModal => !showModal);
   };
 
-  setModalImage = largeImageURL => {
-    this.setState({ largeImageURL });
+  const setModalImage = largeImageURL => {
+    setLargeImageURL(largeImageURL);
   };
 
-  handleFormSubmit = pictureName => {
-    this.setState({ pictureName });
+  const handleFormSubmit = query => {
+    setQuery(query);
+    setPage(1);
+    setStatus('idle');
   };
 
-  setStatus = status => this.setState({ status: status });
+  const handleStatus = useCallback(
+    status => setStatus(status),
+    [],
+  );
 
-  render() {
-    const {
-      pictureName,
-      showModal,
-      largeImageURL,
-      page,
-      status,
-    } = this.state;
+  return (
+    <div>
+      <Searchbar onSubmit={handleFormSubmit} />
+      <ToastContainer autoClose={2000} />
+      <ImageGallery
+        query={query}
+        toggleModal={toggleModal}
+        setModalImage={setModalImage}
+        page={page}
+        handleStatus={handleStatus}
+        status={status}
+      />
 
-    return (
-      <div>
-        <Searchbar onSubmit={this.handleFormSubmit} />
-        <ToastContainer autoClose={2000} />
-        <ImageGallery
-          pictureName={pictureName}
-          toggleModal={this.toggleModal}
-          setModalImage={this.setModalImage}
-          page={page}
-          setStatus={this.setStatus}
+      {status === 'pending' && (
+        <Loader
+          type="ThreeDots"
+          color="#3f51b5"
+          height={50}
+          width={80}
+          timeout={3000}
         />
+      )}
 
-        {status === 'pending' && (
-          <Loader
-            type="ThreeDots"
-            color="#3f51b5"
-            height={50}
-            width={80}
-            timeout={3000}
-          />
-        )}
+      {status === 'resolved' && (
+        <Button onClick={onLoadMore} />
+      )}
 
-        {status === 'resolved' && (
-          <Button onClick={this.onLoadMore} />
-        )}
-
-        {showModal && (
-          <Modal onClose={this.toggleModal}>
-            <img src={largeImageURL} alt="" />
-          </Modal>
-        )}
-      </div>
-    );
-  }
-}
+      {showModal && (
+        <Modal onClose={toggleModal}>
+          <img src={largeImageURL} alt="" />
+        </Modal>
+      )}
+    </div>
+  );
+};
 
 export default App;
